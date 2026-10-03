@@ -54,6 +54,15 @@ export async function markInvoicePaid(userId: string, invoiceId: string) {
   return updated;
 }
 
+export async function deleteInvoice(userId: string, invoiceId: string) {
+  const [deleted] = await db
+    .delete(invoices)
+    .where(and(eq(invoices.id, invoiceId), eq(invoices.userId, userId)))
+    .returning({ id: invoices.id });
+  if (!deleted) throw AppError.notFound('Invoice not found.', 'INVOICE_NOT_FOUND');
+  return deleted;
+}
+
 export async function getDashboardSummary(userId: string) {
   const rows = await listInvoices(userId); // already has effective status applied
   const now = new Date();

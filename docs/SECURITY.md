@@ -14,8 +14,10 @@ are visible instead of assumed away.
   (`eq(table.userId, userId)`) — there is no endpoint that takes a
   resource ID without also filtering by owner, so one user cannot address
   another user's invoice/profile/KPI/client/lead by guessing an ID (IDOR).
-  Confirmed for the new client and lead resources specifically in
-  `clients.service.ts` / `leads.service.ts`, same pattern throughout.
+  Confirmed for the client and lead resources in `clients.service.ts` /
+  `leads.service.ts`, and for the invoice delete route added in this pass
+  (`finance.service.ts` `deleteInvoice`, `tests/invoices.delete.test.ts`)
+  — same pattern throughout.
 - Accountant access is a separate, deliberately narrower mechanism (scoped
   token, read-only, time-limited) rather than a shared login — see A07.
 - `requireRole('owner')` gates link creation/revocation so a future
@@ -228,7 +230,7 @@ are visible instead of assumed away.
 
 - `npx tsc --noEmit` — passes.
 - `npx eslint` (including `eslint-plugin-security`) — passes.
-- `npx jest` — 78 tests passing, covering: JWT forgery/expiry/algorithm-
+- `npx jest` — 81 tests passing, covering: JWT forgery/expiry/algorithm-
   downgrade/algorithm-substitution rejection, invoice aging-bucket
   boundaries, the lead pipeline's stage-transition graph (every legal
   move, every illegal skip/backward/no-op move, both terminal stages),
@@ -243,7 +245,12 @@ are visible instead of assumed away.
   both the cookie and the body, the cookie-only flow still works
   untouched, the new body-only flow issues a fresh access token, a
   reused/rotated-out refresh token is rejected identically whichever
-  channel it arrives on, and logout via body revokes it.
+  channel it arrives on, and logout via body revokes it. Also added:
+  `tests/invoices.delete.test.ts`, covering the new `DELETE
+  /api/finance/invoices/:id` route — a normal owner delete, a
+  cross-tenant attempt confirmed rejected 404 (not leaked as 403, and the
+  other owner's invoice confirmed still present), and the unauthenticated
+  case.
 - `npm audit` — was run for real; a high-severity `drizzle-orm` SQL
   injection advisory and an EOL'd Apollo Server v4 were both found and
   fixed during an earlier pass, not left as pre-existing issues. Re-run on

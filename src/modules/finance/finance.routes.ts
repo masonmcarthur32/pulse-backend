@@ -7,6 +7,7 @@ import {
   createInvoiceHandler,
   listInvoicesHandler,
   markInvoicePaidHandler,
+  deleteInvoiceHandler,
   dashboardSummaryHandler,
   createKpiHandler,
   listKpisHandler
@@ -24,6 +25,11 @@ financeRouter.post(
   '/invoices/:id/mark-paid',
   validate(idParamSchema, 'params'),
   asyncHandler(markInvoicePaidHandler)
+);
+financeRouter.delete(
+  '/invoices/:id',
+  validate(idParamSchema, 'params'),
+  asyncHandler(deleteInvoiceHandler)
 );
 
 financeRouter.get('/kpis', asyncHandler(listKpisHandler));

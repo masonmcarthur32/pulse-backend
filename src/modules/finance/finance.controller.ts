@@ -16,6 +16,11 @@ export async function markInvoicePaidHandler(req: Request, res: Response) {
   res.json({ invoice });
 }
 
+export async function deleteInvoiceHandler(req: Request, res: Response) {
+  await financeService.deleteInvoice(req.user!.id, req.params.id as string);
+  res.status(204).send();
+}
+
 export async function dashboardSummaryHandler(req: Request, res: Response) {
   const summary = await financeService.getDashboardSummary(req.user!.id);
   res.json({ summary });
