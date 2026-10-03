@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies (exact, from lockfile)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit + integration tests
+        run: npm run test:coverage
+        env:
+          NODE_ENV: test
+          JWT_ACCESS_SECRET: ci-only-access-secret-not-a-real-secret-12345
+          DATABASE_URL: postgres://test:test@localhost:5432/test
+
+      - name: Dependency audit (fails the build on high/critical)
+        run: npm audit --omit=dev --audit-level=high
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: lint-typecheck-test
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build production image (not pushed — build-only sanity check)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          push: false
+          tags: business-os-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Wire this job to your actual host (Fly, Render, ECS, etc.) once one is
+  # chosen — deliberately left as a stub rather than guessing your infra.
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   needs: [lint-typecheck-test, docker-build]
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - run: echo "Add your deployment step here"
