@@ -1,0 +1,46 @@
+databases:
+  - name: pulse-db
+    databaseName: pulse
+    user: pulse
+    plan: free
+
+services:
+  - type: web
+    name: pulse-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    # Run migrations before the server starts on every deploy — this works
+    # on every plan tier (Render's paid-only preDeployCommand isn't needed)
+    # and keeps the Dockerfile's own CMD unchanged for local docker-compose use.
+    dockerCommand: sh -c "node dist/db/migrate.js && node dist/index.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pulse-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL_DAYS
+        value: "7"
+      # The iOS app (Capacitor) loads the dashboard from a capacitor://
+      # origin, not a normal https:// site — both are allowed here so the
+      # native app can call this API. Add any future web origin too.
+      - key: CORS_ORIGINS
+        value: "capacitor://localhost,ionic://localhost,http://localhost"
+      # Required for AI Insights to work — paste your own key after the
+      # first deploy (Render → pulse-backend → Environment tab). Leaving
+      # it blank just means Insights falls back to a plain message instead
+      # of an AI-generated one; nothing else is affected.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-6
+      - key: ACCOUNTANT_LINK_TTL_HOURS
+        value: "72"
