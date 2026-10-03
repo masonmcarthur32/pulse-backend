@@ -4,7 +4,7 @@ import { invoices, kpis } from '@/db/schema';
 import { AppError } from '@/lib/http-error';
 import * as clientsService from '@/modules/clients/clients.service';
 import * as leadsService from '@/modules/leads/leads.service';
-import type { CreateInvoiceInput, KpiInput } from '@/modules/finance/finance.schema';
+import type { CreateInvoiceInput, UpdateInvoiceInput, KpiInput } from '@/modules/finance/finance.schema';
 
 type Invoice = typeof invoices.$inferSelect;
 
@@ -52,6 +52,19 @@ export async function markInvoicePaid(userId: string, invoiceId: string) {
     .returning();
   if (!updated) throw AppError.notFound('Invoice not found.', 'INVOICE_NOT_FOUND');
   return updated;
+}
+
+/** Free-form edit of an invoice's own fields — deliberately excludes
+ *  `status`/`paidAt` (see updateInvoiceSchema), so this can never be used
+ *  to quietly mark something paid or unpaid outside markInvoicePaid. */
+export async function updateInvoice(userId: string, invoiceId: string, input: UpdateInvoiceInput) {
+  const [updated] = await db
+    .update(invoices)
+    .set(input)
+    .where(and(eq(invoices.id, invoiceId), eq(invoices.userId, userId)))
+    .returning();
+  if (!updated) throw AppError.notFound('Invoice not found.', 'INVOICE_NOT_FOUND');
+  return { ...updated, status: effectiveStatus(updated) };
 }
 
 export async function deleteInvoice(userId: string, invoiceId: string) {

@@ -15,9 +15,20 @@ are visible instead of assumed away.
   resource ID without also filtering by owner, so one user cannot address
   another user's invoice/profile/KPI/client/lead by guessing an ID (IDOR).
   Confirmed for the client and lead resources in `clients.service.ts` /
-  `leads.service.ts`, and for the invoice delete route added in this pass
-  (`finance.service.ts` `deleteInvoice`, `tests/invoices.delete.test.ts`)
-  — same pattern throughout.
+  `leads.service.ts`, and for the invoice delete and update routes added
+  in this pass (`finance.service.ts` `deleteInvoice`/`updateInvoice`,
+  `tests/invoices.delete.test.ts`, `tests/invoices.update.test.ts`) —
+  same pattern throughout.
+- The new `PATCH /api/finance/invoices/:id` free-form edit is deliberately
+  narrower than its own schema would allow a careless implementation to
+  be: `updateInvoiceSchema` has no `status`/`paidAt` fields at all, so a
+  client that sends `{"status":"paid"}` on this route has that key
+  stripped by validation before the service ever sees it — status can
+  only change through `POST /invoices/:id/mark-paid`. This is enforced
+  structurally (the field doesn't exist in the schema the controller
+  trusts), not by a runtime check that could be forgotten on the next
+  edit — see `tests/invoices.update.test.ts` ("ignores an attempt to
+  change status/paidAt through the generic edit").
 - Accountant access is a separate, deliberately narrower mechanism (scoped
   token, read-only, time-limited) rather than a shared login — see A07.
 - `requireRole('owner')` gates link creation/revocation so a future
@@ -230,7 +241,7 @@ are visible instead of assumed away.
 
 - `npx tsc --noEmit` — passes.
 - `npx eslint` (including `eslint-plugin-security`) — passes.
-- `npx jest` — 81 tests passing, covering: JWT forgery/expiry/algorithm-
+- `npx jest` — 85 tests passing, covering: JWT forgery/expiry/algorithm-
   downgrade/algorithm-substitution rejection, invoice aging-bucket
   boundaries, the lead pipeline's stage-transition graph (every legal
   move, every illegal skip/backward/no-op move, both terminal stages),
@@ -250,6 +261,12 @@ are visible instead of assumed away.
   /api/finance/invoices/:id` route — a normal owner delete, a
   cross-tenant attempt confirmed rejected 404 (not leaked as 403, and the
   other owner's invoice confirmed still present), and the unauthenticated
+  case. Also added: `tests/invoices.update.test.ts`, covering the new
+  `PATCH /api/finance/invoices/:id` route — a normal edit including the
+  new `notes` field round-tripping correctly, confirmation that a
+  `status`/`paidAt` payload is silently stripped rather than applied (and
+  that `mark-paid` still works afterwards as the one real path to a paid
+  status), a cross-tenant attempt rejected 404, and the unauthenticated
   case.
 - `npm audit` — was run for real; a high-severity `drizzle-orm` SQL
   injection advisory and an EOL'd Apollo Server v4 were both found and

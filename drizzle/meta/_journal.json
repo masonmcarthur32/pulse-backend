@@ -15,6 +15,13 @@
       "when": 1790131077047,
       "tag": "0001_lucky_skullbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791010769073,
+      "tag": "0002_confused_frank_castle",
+      "breakpoints": true
     }
   ]
 }

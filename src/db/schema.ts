@@ -86,6 +86,7 @@ export const invoices = pgTable('invoices', {
   issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
   dueAt: timestamp('due_at', { withTimezone: true }).notNull(),
   paidAt: timestamp('paid_at', { withTimezone: true }),
+  notes: text('notes').default(''),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 }, (table) => ({
   userIdx: index('invoices_user_idx').on(table.userId),
