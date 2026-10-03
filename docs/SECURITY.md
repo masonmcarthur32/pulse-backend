@@ -43,6 +43,25 @@ are visible instead of assumed away.
     confirmed rejected after — see `tests/jwt.test.ts` ("rejects a token
     signed with the same secret under a different algorithm") and the
     live-HTTP proof below.
+- Refresh token delivery is channel-aware, not one-size-fits-all. The
+  existing web-style flow (httpOnly, `sameSite:'strict'`, `secure` outside
+  dev cookie, scoped to `path:/api/auth`) is unchanged and remains the
+  stronger of the two — a browser-based attacker cannot read it via XSS
+  and it is never attached to a cross-site request. It is now
+  *additionally* echoed once in the signup/login/refresh JSON response
+  body, for a client that structurally cannot use the cookie at all: a
+  native app's WebView runs on its own origin (`capacitor://localhost`,
+  not this API's origin), so a `sameSite:'strict'` cookie is never
+  attached to its cross-origin requests regardless of `credentials`
+  settings — that's not a bug to route around with laxer cookie flags
+  (which would weaken the *web* flow's CSRF protection for no reason,
+  since no code here currently serves a cross-site browser client), it's
+  a different client needing a different, explicit channel. The native
+  app is responsible for storing that body value itself (platform secure
+  storage) rather than relying on the browser's cookie jar. Both channels
+  terminate in the same `authService.refresh()`/`logout()` — rotation,
+  reuse-detection, and revocation behave identically either way; see
+  `tests/auth.refresh.test.ts`.
 
 **A03 — Injection**
 - All SQL goes through Drizzle's parameterized query builder — no string
@@ -209,17 +228,22 @@ are visible instead of assumed away.
 
 - `npx tsc --noEmit` — passes.
 - `npx eslint` (including `eslint-plugin-security`) — passes.
-- `npx jest` — 72 tests passing, covering: JWT forgery/expiry/algorithm-
+- `npx jest` — 78 tests passing, covering: JWT forgery/expiry/algorithm-
   downgrade/algorithm-substitution rejection, invoice aging-bucket
   boundaries, the lead pipeline's stage-transition graph (every legal
   move, every illegal skip/backward/no-op move, both terminal stages),
-  every validation schema's accept/reject cases, the new keyed
-  in-process rate limiter's own logic (independent per-key budgets,
-  window expiry, correct error shape), and integration tests asserting
-  that protected REST *and* GraphQL routes — including the clients and
-  leads endpoints — reject before reaching a controller, that middleware
-  ordering is correct (auth before validation), and that error responses
-  never leak a stack trace.
+  every validation schema's accept/reject cases, the keyed in-process
+  rate limiter's own logic (independent per-key budgets, window expiry,
+  correct error shape), integration tests asserting that protected REST
+  *and* GraphQL routes — including the clients and leads endpoints —
+  reject before reaching a controller, that middleware ordering is
+  correct (auth before validation), and that error responses never leak
+  a stack trace — and, against a real local Postgres (not a mock),
+  `tests/auth.refresh.test.ts`: signup/login return the refresh token in
+  both the cookie and the body, the cookie-only flow still works
+  untouched, the new body-only flow issues a fresh access token, a
+  reused/rotated-out refresh token is rejected identically whichever
+  channel it arrives on, and logout via body revokes it.
 - `npm audit` — was run for real; a high-severity `drizzle-orm` SQL
   injection advisory and an EOL'd Apollo Server v4 were both found and
   fixed during an earlier pass, not left as pre-existing issues. Re-run on
