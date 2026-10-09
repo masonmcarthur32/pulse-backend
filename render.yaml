@@ -33,7 +33,7 @@ services:
       # origin, not a normal https:// site — both are allowed here so the
       # native app can call this API. Add any future web origin too.
       - key: CORS_ORIGINS
-        value: "capacitor://localhost,ionic://localhost,http://localhost"
+        value: "capacitor://localhost"
       # Required for AI Insights to work — paste your own key after the
       # first deploy (Render → pulse-backend → Environment tab). Leaving
       # it blank just means Insights falls back to a plain message instead

@@ -34,7 +34,9 @@ function clearRefreshCookie(res: Response) {
  * sameSite:'strict' deliberately for CSRF protection — which also means
  * no browser will ever attach it to a cross-site request, cookie-store
  * quirks aside. A native client therefore stores this body value itself
- * (platform secure storage) and presents it back explicitly; see
+ * and presents it back explicitly (today the dashboard keeps it in the
+ * WebView's localStorage; moving it to the iOS Keychain is a documented
+ * hardening follow-up in docs/SECURITY.md); see
  * refreshHandler/logoutHandler below. This changes nothing for a cookie
  * client: it already ignores response-body fields it doesn't use, and
  * its cookie's httpOnly/sameSite/secure flags are untouched.

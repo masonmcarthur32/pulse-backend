@@ -70,11 +70,22 @@ are visible instead of assumed away.
   (which would weaken the *web* flow's CSRF protection for no reason,
   since no code here currently serves a cross-site browser client), it's
   a different client needing a different, explicit channel. The native
-  app is responsible for storing that body value itself (platform secure
-  storage) rather than relying on the browser's cookie jar. Both channels
+  app is responsible for storing that body value itself rather than
+  relying on the browser's cookie jar. **Current limitation:** the
+  dashboard stores it (and the access token) in the WebView's
+  `localStorage`, which is app-sandboxed but not hardware-backed and is
+  readable by any script running in the page. The mitigations are that
+  the page loads no third-party scripts, every record field is HTML-
+  escaped before rendering, and the native build ships a restrictive CSP;
+  the stronger fix — a Keychain-backed secure-storage plugin — is a
+  recommended follow-up before wide distribution. Both channels
   terminate in the same `authService.refresh()`/`logout()` — rotation,
   reuse-detection, and revocation behave identically either way; see
   `tests/auth.refresh.test.ts`.
+
+**A05 note — CORS for the native client:** `render.yaml` allows only
+`capacitor://localhost` (the iOS app's origin). Earlier drafts also listed
+`ionic://localhost` and `http://localhost`; those were removed as unneeded.
 
 **A03 — Injection**
 - All SQL goes through Drizzle's parameterized query builder — no string
